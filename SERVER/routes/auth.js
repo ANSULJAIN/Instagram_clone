@@ -4,15 +4,21 @@ const mongoose = require('mongoose');
 const User = mongoose.model("User");
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const {JWT_SECRET} =require("../keys")
+const {JWT_SECRET} =require("../config/keys")
 
 const requireLogin = require('../middleware/requreLogin')
 
-router.get('/protected',requireLogin,(req,res)=>{
+router.get('/protected',async(req,res)=>{
+    try {
+        const users = await User.find();
+        console.log(users);
+    } catch (err) {
+        console.error(err);
+    }
     res.send("hallo user")
 })
 router.post('/signup', (req, res) => {
-    const { nameusers, email, password } = req.body;
+    const { nameusers, email, password,pic } = req.body;
 
     if (!email || !password || !nameusers) {
         return res.status(422).json({ error: "please add all the fields" });
@@ -28,7 +34,8 @@ router.post('/signup', (req, res) => {
                     const user = new User({
                         email,
                         password: hashedpassword,
-                        nameusers
+                        nameusers,
+                        pic:pic
                     });
 
                     // Save the user to the database
@@ -60,10 +67,13 @@ router.post('/singin', (req, res) => {
             if (!savedUser) {
                 return res.status(422).json({ error: "invalid email or password" })
             }
+            console.log(savedUser._Id);
             bcrypt.compare(password, savedUser.password)
                 .then((doMatch) => {
                     if (doMatch) { const token = jwt.sign({_id:savedUser._id},JWT_SECRET)
-                res.json({token}) }
+                        const {_id,nameusers,email,followers,following,pic}=savedUser;
+
+                res.json({token,user:{_id,nameusers,email,followers,following,pic}}) }
                     else {
                         res.status(422).json({ error: "invalid password" })
                     }
